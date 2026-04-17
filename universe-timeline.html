@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Universe Timeline</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0e0c0a;
+    --surface: #161310;
+    --surface2: #1e1a16;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #e8e2d9;
+    --text2: #9a9189;
+    --text3: #5a544e;
+    --accent: #c9a96e;
+    --accent2: #8c6d3f;
+    --track-h: 52px;
+    --track-gap: 10px;
+    --label-w: 160px;
+    --axis-h: 36px;
+    --row-pad: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  header {
+    padding: 40px 36px 28px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 300;
+    letter-spacing: 0.04em;
+    color: var(--text);
+  }
+  header h1 span { color: var(--accent); font-style: italic; }
+
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+  .btn {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    padding: 7px 16px;
+    border-radius: 4px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { border-color: var(--accent2); color: var(--accent); }
+  .btn.primary:hover { background: var(--accent2); color: var(--bg); }
+
+  .controls {
+    padding: 16px 36px;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .ctrl-group { display: flex; align-items: center; gap: 8px; }
+  .ctrl-label { color: var(--text3); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+  input[type=range] {
+    -webkit-appearance: none;
+    height: 2px;
+    background: var(--border2);
+    border-radius: 2px;
+    width: 100px;
+    cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+  }
+  #zoom-val { color: var(--accent); font-size: 12px; min-width: 28px; }
+
+  .timeline-wrap {
+    overflow-x: auto;
+    overflow-y: auto;
+    padding: 0 36px 40px;
+  }
+
+  .timeline-inner {
+    position: relative;
+    min-width: 800px;
+  }
+
+  .axis-row {
+    display: flex;
+    margin-left: var(--label-w);
+    height: var(--axis-h);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border2);
+    margin-bottom: 4px;
+  }
+
+  .axis-tick {
+    position: absolute;
+    top: 0; bottom: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding-top: 8px;
+  }
+  .axis-tick-label {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+  .axis-tick-line {
+    width: 1px;
+    flex: 1;
+    background: var(--border);
+    margin-top: 4px;
+  }
+
+  .grid-lines {
+    position: absolute;
+    top: var(--axis-h);
+    left: var(--label-w);
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  .grid-line {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: var(--border);
+  }
+
+  .books-area {
+    position: relative;
+    z-index: 1;
+  }
+
+  .book-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: var(--track-gap);
+    min-height: calc(var(--track-h) + var(--row-pad)*2);
+  }
+
+  .book-label {
+    width: var(--label-w);
+    flex-shrink: 0;
+    padding-right: 14px;
+    text-align: right;
+  }
+  .book-label-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--text);
+    line-height: 1.3;
+    cursor: pointer;
+    transition: color 0.12s;
+  }
+  .book-label-title:hover { color: var(--accent); }
+  .book-label-couple {
+    font-size: 11px;
+    color: var(--text3);
+    margin-top: 2px;
+    font-style: italic;
+  }
+
+  .book-track-area {
+    flex: 1;
+    position: relative;
+    height: calc(var(--track-h) + var(--row-pad)*2);
+  }
+
+  .book-bar {
+    position: absolute;
+    top: var(--row-pad);
+    height: var(--track-h);
+    border-radius: 5px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: filter 0.15s, border-color 0.15s;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 0 10px;
+    min-width: 40px;
+  }
+  .book-bar:hover { filter: brightness(1.15); border-color: rgba(255,255,255,0.2); }
+  .book-bar.selected { border-color: var(--accent) !important; filter: brightness(1.2); }
+
+  .bar-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+  .bar-couple {
+    font-size: 10px;
+    opacity: 0.75;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 1px;
+  }
+
+  .beat-markers {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+  }
+  .beat-dot {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.6);
+    pointer-events: all;
+    cursor: pointer;
+    z-index: 5;
+    transition: transform 0.12s;
+  }
+  .beat-dot:hover { transform: translate(-50%, -50%) scale(1.6); }
+
+  .resize-handle {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+    z-index: 10;
+  }
+  .resize-handle-left {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+    z-index: 10;
+  }
+
+  .detail-panel {
+    margin: 0 36px 0;
+    background: var(--surface);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    overflow: hidden;
+    display: none;
+  }
+  .detail-panel.open { display: block; }
+
+  .dp-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .dp-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--text);
+  }
+  .dp-close {
+    background: none;
+    border: none;
+    color: var(--text3);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 2px 6px;
+  }
+  .dp-close:hover { color: var(--text); }
+
+  .dp-body {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+
+  .dp-section-title {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+  .field-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 12px;
+  }
+  .field-label { font-size: 11px; color: var(--text3); }
+  .field-input {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    padding: 6px 10px;
+    width: 100%;
+    transition: border-color 0.12s;
+  }
+  .field-input:focus { outline: none; border-color: var(--accent2); }
+  .field-input::placeholder { color: var(--text3); }
+
+  .beats-section { grid-column: 1 / -1; }
+  .beats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .beat-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 10px 12px;
+  }
+  .beat-card-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+  }
+  .beat-number {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent2);
+    color: var(--bg);
+    font-size: 10px;
+    font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .beat-type {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .add-beat-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--surface2);
+    border: 1px dashed var(--border2);
+    border-radius: 5px;
+    padding: 10px 12px;
+    color: var(--text3);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.12s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .add-beat-btn:hover { border-color: var(--accent2); color: var(--accent); }
+
+  .dp-footer {
+    padding: 14px 20px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .now-line {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 1px;
+    background: var(--accent);
+    opacity: 0.4;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .now-label {
+    position: absolute;
+    top: -22px;
+    left: 2px;
+    font-size: 10px;
+    color: var(--accent);
+    white-space: nowrap;
+    letter-spacing: 0.04em;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    letter-spacing: 0.03em;
+    margin-right: 4px;
+    margin-bottom: 4px;
+  }
+
+  @media (max-width: 600px) {
+    :root { --label-w: 100px; }
+    header { padding: 24px 20px 18px; }
+    .controls, .timeline-wrap, .detail-panel { padding-left: 20px; padding-right: 20px; }
+    .dp-body { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Universe <span>Timeline</span></h1>
+  </div>
+  <div class="header-actions">
+    <button class="btn" onclick="addBook()">+ Add book</button>
+    <button class="btn primary" onclick="exportJSON()">Export JSON</button>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="ctrl-group">
+    <span class="ctrl-label">Zoom</span>
+    <input type="range" min="40" max="200" value="80" id="zoom-slider" oninput="setZoom(this.value)">
+    <span id="zoom-val">80px/yr</span>
+  </div>
+  <div class="ctrl-group">
+    <span class="ctrl-label">Span</span>
+    <span id="span-info" style="color:var(--text2);font-size:12px;">—</span>
+  </div>
+  <div class="ctrl-group" style="margin-left:auto;">
+    <span class="ctrl-label" style="font-size:10px;">Drag bars to reposition · Drag edges to resize · Click to edit</span>
+  </div>
+</div>
+
+<div style="height:20px;"></div>
+<div class="timeline-wrap" id="timeline-wrap">
+  <div class="timeline-inner" id="timeline-inner">
+    <div class="axis-row" id="axis-row" style="position:relative;"></div>
+    <div class="grid-lines" id="grid-lines"></div>
+    <div class="books-area" id="books-area"></div>
+  </div>
+</div>
+
+<div class="detail-panel" id="detail-panel">
+  <div class="dp-header">
+    <div class="dp-title" id="dp-title">Book title</div>
+    <button class="dp-close" onclick="closeDetail()">✕</button>
+  </div>
+  <div class="dp-body" id="dp-body"></div>
+  <div class="dp-footer">
+    <button class="btn" onclick="deleteBook()" style="color:#c77;border-color:rgba(200,100,100,0.3);">Delete book</button>
+    <button class="btn primary" onclick="saveDetail()">Save changes</button>
+  </div>
+</div>
+<div style="height:32px;"></div>
+
+<script>
+const BOOK_COLORS = [
+  '#534AB7','#0F6E56','#993C1D','#993556','#185FA5',
+  '#3B6D11','#854F0B','#5F5E5A','#3C3489','#085041',
+  '#712B13','#72243E','#0C447C','#27500A','#633806'
+];
+
+const BG_COLORS = [
+  'rgba(83,74,183,0.18)','rgba(15,110,86,0.18)','rgba(153,60,29,0.18)',
+  'rgba(153,53,86,0.18)','rgba(24,95,165,0.18)','rgba(59,109,17,0.18)',
+  'rgba(133,79,11,0.18)','rgba(95,94,90,0.18)','rgba(60,52,137,0.18)',
+  'rgba(8,80,65,0.18)','rgba(113,43,19,0.18)','rgba(114,36,62,0.18)',
+  'rgba(12,68,124,0.18)','rgba(39,80,10,0.18)','rgba(99,56,6,0.18)'
+];
+
+let pxPerYear = 80;
+let minYear = 2020;
+let maxYear = 2035;
+let selectedBookId = null;
+let dragState = null;
+
+let books = [
+  { id:'b1',  title:'Dark Romance',  couple:'Vihaan & Veda',       start:2020, end:2021, color:BOOK_COLORS[0],  bg:BG_COLORS[0],  beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b2',  title:'Book 2',        couple:'Prem & Prarthana',     start:2021, end:2022.5, color:BOOK_COLORS[1],  bg:BG_COLORS[1],  beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b3',  title:'Book 3',        couple:'Aramaan & Aaradhna',   start:2021.5, end:2023, color:BOOK_COLORS[2],  bg:BG_COLORS[2],  beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b4',  title:'Book 4',        couple:'Arjun & Anjali',       start:2022.5, end:2024, color:BOOK_COLORS[3],  bg:BG_COLORS[3],  beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b5',  title:'Book 5',        couple:'Arth & Anaya',         start:2023, end:2024.5, color:BOOK_COLORS[4],  bg:BG_COLORS[4],  beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b6',  title:'Book 6',        couple:'Nachiket & Nivedita',  start:2024, end:2025.5, color:BOOK_COLORS[5],  bg:BG_COLORS[5],  beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b7',  title:'Book 7',        couple:'Pavitra & Aanya',      start:2024.5, end:2026, color:BOOK_COLORS[6],  bg:BG_COLORS[6],  beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b8',  title:'Book 8',        couple:'Patrick & Annette',    start:2025, end:2026.5, color:BOOK_COLORS[7],  bg:BG_COLORS[7],  beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b9',  title:'Book 9',        couple:'Charles & Eloise',     start:2026, end:2027.5, color:BOOK_COLORS[8],  bg:BG_COLORS[8],  beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b10', title:'Book 10',       couple:'Augustine & Penelope', start:2026.5, end:2028, color:BOOK_COLORS[9],  bg:BG_COLORS[9],  beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b11', title:'Book 11',       couple:'Valentin & Danielle',  start:2027.5, end:2029, color:BOOK_COLORS[10], bg:BG_COLORS[10], beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b12', title:'Book 12',       couple:'Maxmillian & [Name]',  start:2028.5, end:2030, color:BOOK_COLORS[11], bg:BG_COLORS[11], beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b13', title:'Book 13',       couple:'Cillian & Anastasia',  start:2029.5, end:2031, color:BOOK_COLORS[12], bg:BG_COLORS[12], beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b14', title:'Book 14',       couple:'Christian & [Name]',   start:2030.5, end:2032, color:BOOK_COLORS[13], bg:BG_COLORS[13], beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+  { id:'b15', title:'Book 15',       couple:'Alexander & [Name]',   start:2031.5, end:2033, color:BOOK_COLORS[14], bg:BG_COLORS[14], beats:[{label:'[Beat 1]'},{label:'[Beat 2]'},{label:'[Beat 3]'}], notes:'' },
+];
+
+function calcBounds() {
+  if (!books.length) { minYear = 2020; maxYear = 2035; return; }
+  minYear = Math.floor(Math.min(...books.map(b => b.start))) - 1;
+  maxYear = Math.ceil(Math.max(...books.map(b => b.end))) + 1;
+  document.getElementById('span-info').textContent = minYear + ' – ' + maxYear;
+}
+
+function yearToPx(y) { return (y - minYear) * pxPerYear; }
+function pxToYear(px) { return px / pxPerYear + minYear; }
+
+function totalW() { return (maxYear - minYear) * pxPerYear; }
+
+function setZoom(v) {
+  pxPerYear = parseInt(v);
+  document.getElementById('zoom-val').textContent = v + 'px/yr';
+  renderAll();
+}
+
+function renderAll() {
+  calcBounds();
+  renderAxis();
+  renderBooks();
+}
+
+function renderAxis() {
+  const axisRow = document.getElementById('axis-row');
+  const gridLines = document.getElementById('grid-lines');
+  const tw = totalW();
+  axisRow.style.width = tw + 'px';
+  gridLines.style.width = tw + 'px';
+  document.getElementById('timeline-inner').style.width = (tw + parseInt(getComputedStyle(document.documentElement).getPropertyValue('--label-w') || 160)) + 'px';
+  axisRow.innerHTML = '';
+  gridLines.innerHTML = '';
+
+  const step = pxPerYear >= 80 ? 1 : pxPerYear >= 40 ? 2 : 5;
+  for (let y = Math.ceil(minYear); y <= maxYear; y += step) {
+    const x = yearToPx(y);
+    const tick = document.createElement('div');
+    tick.className = 'axis-tick';
+    tick.style.left = x + 'px';
+    tick.innerHTML = `<span class="axis-tick-label">${y}</span><div class="axis-tick-line"></div>`;
+    axisRow.appendChild(tick);
+
+    const gl = document.createElement('div');
+    gl.className = 'grid-line';
+    gl.style.left = x + 'px';
+    gridLines.appendChild(gl);
+  }
+}
+
+function renderBooks() {
+  const area = document.getElementById('books-area');
+  area.innerHTML = '';
+  const tw = totalW();
+
+  books.forEach((b, idx) => {
+    const row = document.createElement('div');
+    row.className = 'book-row';
+    row.dataset.id = b.id;
+
+    const label = document.createElement('div');
+    label.className = 'book-label';
+    label.innerHTML = `<div class="book-label-title" onclick="openDetail('${b.id}')">${b.title}</div><div class="book-label-couple">${b.couple}</div>`;
+    row.appendChild(label);
+
+    const trackArea = document.createElement('div');
+    trackArea.className = 'book-track-area';
+    trackArea.style.width = tw + 'px';
+
+    const left = yearToPx(b.start);
+    const width = Math.max(yearToPx(b.end) - left, 40);
+
+    const bar = document.createElement('div');
+    bar.className = 'book-bar' + (b.id === selectedBookId ? ' selected' : '');
+    bar.style.left = left + 'px';
+    bar.style.width = width + 'px';
+    bar.style.background = b.bg;
+    bar.style.borderColor = b.color;
+    bar.dataset.id = b.id;
+
+    bar.innerHTML = `
+      <div class="bar-title" style="color:${b.color}">${b.title}</div>
+      <div class="bar-couple" style="color:${b.color}">${b.couple}</div>
+      <div class="beat-markers" id="beats-${b.id}"></div>
+      <div class="resize-handle-left" data-dir="left" data-id="${b.id}"></div>
+      <div class="resize-handle" data-dir="right" data-id="${b.id}"></div>
+    `;
+
+    bar.addEventListener('mousedown', e => {
+      if (e.target.classList.contains('resize-handle') || e.target.classList.contains('resize-handle-left') || e.target.classList.contains('beat-dot')) return;
+      startDrag(e, b.id, 'move');
+    });
+    bar.addEventListener('click', e => {
+      if (dragState && dragState.moved) return;
+      openDetail(b.id);
+    });
+
+    trackArea.appendChild(bar);
+    row.appendChild(trackArea);
+    area.appendChild(row);
+
+    renderBeats(b);
+  });
+
+  document.querySelectorAll('.resize-handle, .resize-handle-left').forEach(el => {
+    el.addEventListener('mousedown', e => {
+      e.stopPropagation();
+      startDrag(e, el.dataset.id, el.dataset.dir);
+    });
+  });
+}
+
+function renderBeats(b) {
+  const container = document.getElementById('beats-' + b.id);
+  if (!container) return;
+  container.innerHTML = '';
+  const barW = Math.max(yearToPx(b.end) - yearToPx(b.start), 40);
+  b.beats.forEach((beat, i) => {
+    const frac = (i + 1) / (b.beats.length + 1);
+    const dot = document.createElement('div');
+    dot.className = 'beat-dot';
+    dot.style.left = (frac * barW) + 'px';
+    dot.title = beat.label;
+    dot.addEventListener('click', e => { e.stopPropagation(); openDetail(b.id); });
+    container.appendChild(dot);
+  });
+}
+
+function startDrag(e, bookId, type) {
+  e.preventDefault();
+  const b = books.find(x => x.id === bookId);
+  dragState = { bookId, type, startX: e.clientX, origStart: b.start, origEnd: b.end, moved: false };
+
+  function onMove(ev) {
+    const dx = ev.clientX - dragState.startX;
+    const dy = dx / pxPerYear;
+    dragState.moved = Math.abs(dx) > 3;
+    const bk = books.find(x => x.id === dragState.bookId);
+    if (!bk) return;
+    if (dragState.type === 'move') {
+      const dur = dragState.origEnd - dragState.origStart;
+      bk.start = Math.round((dragState.origStart + dy) * 4) / 4;
+      bk.end = bk.start + dur;
+    } else if (dragState.type === 'right') {
+      bk.end = Math.max(dragState.origStart + 0.25, Math.round((dragState.origEnd + dy) * 4) / 4);
+    } else if (dragState.type === 'left') {
+      bk.start = Math.min(dragState.origEnd - 0.25, Math.round((dragState.origStart + dy) * 4) / 4);
+    }
+    renderAll();
+  }
+  function onUp() {
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    setTimeout(() => { dragState = null; }, 50);
+  }
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('mouseup', onUp);
+}
+
+function openDetail(id) {
+  selectedBookId = id;
+  const b = books.find(x => x.id === id);
+  document.getElementById('dp-title').textContent = b.title;
+  renderDetailBody(b);
+  document.getElementById('detail-panel').classList.add('open');
+  document.getElementById('detail-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  renderBooks();
+}
+
+function renderDetailBody(b) {
+  const body = document.getElementById('dp-body');
+  const startFrac = b.start % 1;
+  const endFrac = b.end % 1;
+  const startYr = Math.floor(b.start);
+  const endYr = Math.floor(b.end);
+  const fracToMonth = f => {
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    return months[Math.round(f * 12)] || 'Jan';
+  };
+
+  body.innerHTML = `
+    <div>
+      <div class="dp-section-title">Book details</div>
+      <div class="field-row">
+        <label class="field-label">Title</label>
+        <input class="field-input" id="dp-title-input" value="${b.title}" placeholder="Book title">
+      </div>
+      <div class="field-row">
+        <label class="field-label">Couple</label>
+        <input class="field-input" id="dp-couple" value="${b.couple}" placeholder="Character 1 & Character 2">
+      </div>
+      <div class="field-row">
+        <label class="field-label">Notes / summary</label>
+        <input class="field-input" id="dp-notes" value="${b.notes||''}" placeholder="Short synopsis or notes…">
+      </div>
+    </div>
+    <div>
+      <div class="dp-section-title">Timeline position</div>
+      <div class="field-row">
+        <label class="field-label">Start year</label>
+        <input class="field-input" id="dp-start-yr" type="number" value="${startYr}" placeholder="e.g. 2023">
+      </div>
+      <div class="field-row">
+        <label class="field-label">Start month</label>
+        <input class="field-input" id="dp-start-mo" value="${fracToMonth(startFrac)}" placeholder="e.g. Mar">
+      </div>
+      <div class="field-row">
+        <label class="field-label">End year</label>
+        <input class="field-input" id="dp-end-yr" type="number" value="${endYr}" placeholder="e.g. 2024">
+      </div>
+      <div class="field-row">
+        <label class="field-label">End month</label>
+        <input class="field-input" id="dp-end-mo" value="${fracToMonth(endFrac)}" placeholder="e.g. Dec">
+      </div>
+    </div>
+    <div class="beats-section">
+      <div class="dp-section-title">Story beats</div>
+      <div class="beats-grid" id="beats-grid">
+        ${b.beats.map((beat, i) => `
+          <div class="beat-card">
+            <div class="beat-card-header">
+              <div class="beat-number">${i+1}</div>
+              <span class="beat-type">Beat ${i+1}</span>
+              <button onclick="removeBeat('${b.id}',${i})" style="margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;line-height:1;padding:0 2px;" title="Remove">✕</button>
+            </div>
+            <input class="field-input" id="beat-${i}" value="${beat.label}" placeholder="[Placeholder — fill in later]" style="font-size:11px;">
+          </div>
+        `).join('')}
+        <button class="add-beat-btn" onclick="addBeat('${b.id}')">+ Add beat</button>
+      </div>
+    </div>
+  `;
+}
+
+function saveDetail() {
+  const b = books.find(x => x.id === selectedBookId);
+  if (!b) return;
+  b.title = document.getElementById('dp-title-input').value || b.title;
+  b.couple = document.getElementById('dp-couple').value || b.couple;
+  b.notes = document.getElementById('dp-notes').value;
+  document.getElementById('dp-title').textContent = b.title;
+
+  const monthToFrac = m => {
+    const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const idx = months.indexOf((m||'jan').toLowerCase().slice(0,3));
+    return idx >= 0 ? idx/12 : 0;
+  };
+  const startYr = parseInt(document.getElementById('dp-start-yr').value) || Math.floor(b.start);
+  const startMo = monthToFrac(document.getElementById('dp-start-mo').value);
+  const endYr = parseInt(document.getElementById('dp-end-yr').value) || Math.floor(b.end);
+  const endMo = monthToFrac(document.getElementById('dp-end-mo').value);
+  b.start = startYr + startMo;
+  b.end = endYr + endMo;
+
+  b.beats.forEach((beat, i) => {
+    const el = document.getElementById('beat-' + i);
+    if (el) beat.label = el.value;
+  });
+
+  renderAll();
+  renderDetailBody(b);
+}
+
+function addBeat(bookId) {
+  const b = books.find(x => x.id === bookId);
+  if (!b) return;
+  b.beats.push({ label: '[Placeholder — fill in later]' });
+  renderDetailBody(b);
+}
+
+function removeBeat(bookId, idx) {
+  const b = books.find(x => x.id === bookId);
+  if (!b || b.beats.length <= 1) return;
+  b.beats.splice(idx, 1);
+  renderDetailBody(b);
+  renderBooks();
+}
+
+function closeDetail() {
+  selectedBookId = null;
+  document.getElementById('detail-panel').classList.remove('open');
+  renderBooks();
+}
+
+function deleteBook() {
+  if (!selectedBookId) return;
+  if (!confirm('Delete this book from the timeline?')) return;
+  books = books.filter(b => b.id !== selectedBookId);
+  closeDetail();
+  renderAll();
+}
+
+function addBook() {
+  calcBounds();
+  const newId = 'b' + Date.now();
+  const colorIdx = books.length % BOOK_COLORS.length;
+  books.push({
+    id: newId,
+    title: '[New book]',
+    couple: '[Character 1 & Character 2]',
+    start: minYear + 1,
+    end: minYear + 2,
+    color: BOOK_COLORS[colorIdx],
+    bg: BG_COLORS[colorIdx],
+    beats: [{ label: '[Beat 1]' }, { label: '[Beat 2]' }, { label: '[Beat 3]' }],
+    notes: ''
+  });
+  renderAll();
+  openDetail(newId);
+}
+
+function exportJSON() {
+  const data = JSON.stringify(books, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'universe-timeline.json';
+  a.click();
+}
+
+renderAll();
+</script>
+</body>
+</html>

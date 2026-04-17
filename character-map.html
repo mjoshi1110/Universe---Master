@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Character Map</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #f7f5f2; font-family: system-ui, -apple-system, sans-serif; font-size: 13px; color: #1a1a18; min-height: 100vh; }
+
+  #top-bar {
+    background: #fff;
+    border-bottom: 1px solid #e5e3de;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 20;
+  }
+  #top-bar h1 { font-size: 15px; font-weight: 600; color: #1a1a18; letter-spacing: -0.01em; }
+
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; }
+  .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #6b6963; }
+  .leg-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+
+  #hint { margin-left: auto; font-size: 11px; color: #aaa49c; }
+
+  #canvas-wrap {
+    width: 100%;
+    overflow: auto;
+    background: #f7f5f2;
+  }
+  canvas { display: block; cursor: default; }
+
+  #panel {
+    background: #fff;
+    border-top: 1px solid #e5e3de;
+    min-height: 100px;
+    display: none;
+  }
+  #panel.open { display: block; }
+
+  #panel-header {
+    padding: 14px 20px 10px;
+    border-bottom: 1px solid #f0ede8;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  #panel-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #1a1a18;
+    flex: 1;
+  }
+  #panel-sub { font-size: 12px; color: #9a9189; }
+  #panel-close {
+    background: none; border: none; color: #aaa; cursor: pointer;
+    font-size: 16px; padding: 2px 6px; border-radius: 4px;
+  }
+  #panel-close:hover { background: #f0ede8; color: #1a1a18; }
+
+  #panel-body { padding: 0 20px 20px; }
+
+  .edit-section {
+    background: #f7f5f2;
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin: 12px 0;
+    display: none;
+  }
+  .edit-section.open { display: block; }
+  .edit-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .edit-row label { font-size: 11px; color: #9a9189; width: 55px; flex-shrink: 0; }
+  .edit-row input {
+    flex: 1; font-size: 12px; padding: 5px 10px;
+    border: 1px solid #e5e3de; border-radius: 6px;
+    background: #fff; color: #1a1a18;
+  }
+  .edit-row input:focus { outline: none; border-color: #b5aef5; }
+  .save-btn {
+    font-size: 12px; padding: 5px 14px;
+    border: 1px solid #e5e3de; border-radius: 6px;
+    background: #fff; color: #1a1a18; cursor: pointer;
+    transition: all 0.12s;
+  }
+  .save-btn:hover { background: #f0ede8; }
+
+  .conn-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  .conn-table tr + tr td { border-top: 1px solid #f0ede8; }
+  .conn-table td { padding: 8px 6px; vertical-align: middle; font-size: 12px; }
+  .conn-table td:first-child { font-weight: 500; width: 130px; color: #1a1a18; white-space: nowrap; }
+
+  .badges { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 5px; }
+  .badge {
+    padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 500;
+  }
+  .b-rel { background: #dbeafe; color: #1d4ed8; }
+  .b-sec { background: #fef3c7; color: #92400e; }
+  .b-pow { background: #fee2e2; color: #991b1b; }
+  .b-int { background: #dcfce7; color: #166534; }
+
+  .checks { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 5px; }
+  .checks label { font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; color: #6b6963; }
+  .checks label:hover { color: #1a1a18; }
+
+  .note-input {
+    width: 100%; font-size: 11px; padding: 4px 8px;
+    border: 1px solid #e5e3de; border-radius: 5px;
+    background: #fafaf8; color: #1a1a18;
+  }
+  .note-input:focus { outline: none; border-color: #b5aef5; }
+  .note-input::placeholder { color: #c5c0b8; }
+
+  #edit-toggle {
+    font-size: 11px; color: #7c74e8; cursor: pointer;
+    text-decoration: none; background: none; border: none; padding: 0;
+  }
+  #edit-toggle:hover { text-decoration: underline; }
+
+  #section-label {
+    font-size: 10px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.07em; color: #b5b0a8; margin: 14px 0 6px;
+  }
+</style>
+</head>
+<body>
+
+<div id="top-bar">
+  <h1>Character Map</h1>
+  <div class="legend">
+    <div class="leg"><div class="leg-dot" style="background:#2563eb"></div>Relationship</div>
+    <div class="leg"><div class="leg-dot" style="background:#d97706"></div>Secrets / history</div>
+    <div class="leg"><div class="leg-dot" style="background:#dc2626"></div>Power dynamics</div>
+    <div class="leg"><div class="leg-dot" style="background:#16a34a"></div>Common interests</div>
+  </div>
+  <div id="hint">Click any character to edit connections</div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+</div>
+
+<div id="panel">
+  <div id="panel-header">
+    <div>
+      <div id="panel-name">—</div>
+      <div id="panel-sub">— · <button id="edit-toggle" onclick="toggleEdit()">Edit name / book ↗</button></div>
+    </div>
+    <button id="panel-close" onclick="closePanel()">✕</button>
+  </div>
+  <div id="panel-body">
+    <div class="edit-section" id="edit-section">
+      <div class="edit-row"><label>Name</label><input id="ei-name" placeholder="Character name"></div>
+      <div class="edit-row"><label>Book</label><input id="ei-book" placeholder="Book title"></div>
+      <button class="save-btn" onclick="saveEdit()">Save</button>
+    </div>
+    <div id="section-label">Connections to other characters</div>
+    <table class="conn-table" id="conn-table"></table>
+  </div>
+</div>
+
+<script>
+const BOOKS = [
+  { id:'b1',  chars:['Vihaan','Veda'],         book:'Dark Romance',  col:'#534AB7', bg:'#EEEDFE' },
+  { id:'b2',  chars:['Prem','Prarthana'],       book:'Book 2',        col:'#0F6E56', bg:'#E1F5EE' },
+  { id:'b3',  chars:['Aramaan','Aaradhna'],     book:'Book 3',        col:'#993C1D', bg:'#FAECE7' },
+  { id:'b4',  chars:['Arjun','Anjali'],         book:'Book 4',        col:'#993556', bg:'#FBEAF0' },
+  { id:'b5',  chars:['Arth','Anaya'],           book:'Book 5',        col:'#185FA5', bg:'#E6F1FB' },
+  { id:'b6',  chars:['Nachiket','Nivedita'],    book:'Book 6',        col:'#3B6D11', bg:'#EAF3DE' },
+  { id:'b7',  chars:['Pavitra','Aanya'],        book:'Book 7',        col:'#854F0B', bg:'#FAEEDA' },
+  { id:'b8',  chars:['Patrick','Annette'],      book:'Book 8',        col:'#5F5E5A', bg:'#F1EFE8' },
+  { id:'b9',  chars:['Charles','Eloise'],       book:'Book 9',        col:'#3C3489', bg:'#EEEDFE' },
+  { id:'b10', chars:['Augustine','Penelope'],   book:'Book 10',       col:'#085041', bg:'#E1F5EE' },
+  { id:'b11', chars:['Valentin','Danielle'],    book:'Book 11',       col:'#712B13', bg:'#FAECE7' },
+  { id:'b12', chars:['Maxmillian','[Name TBD]'],book:'Book 12',       col:'#A32D2D', bg:'#FCEBEB' },
+  { id:'b13', chars:['Cillian','Anastasia'],    book:'Book 13',       col:'#0C447C', bg:'#E6F1FB' },
+  { id:'b14', chars:['Christian','[Name TBD]'], book:'Book 14',       col:'#27500A', bg:'#EAF3DE' },
+  { id:'b15', chars:['Alexander','[Name TBD]'], book:'Book 15',       col:'#633806', bg:'#FAEEDA' },
+];
+
+const CONN_COLORS = { rel:'#2563eb', sec:'#d97706', pow:'#dc2626', int:'#16a34a' };
+const CONN_DASH   = { rel:[], sec:[6,3], pow:[], int:[4,4] };
+
+const CW = 96, CH = 34, CR = 8, GAP = 8;
+let nodes = [], connections = {}, charData = {}, selectedId = null, dragState = null;
+let VW = 960, VH = 740;
+
+function buildNodes() {
+  const N = BOOKS.length, cx = VW/2, cy = VH/2, rx = 370, ry = 300;
+  nodes = [];
+  BOOKS.forEach((b, i) => {
+    const angle = (2*Math.PI*i/N) - Math.PI/2;
+    const px = Math.round(cx + rx*Math.cos(angle));
+    const py = Math.round(cy + ry*Math.sin(angle));
+    const lx = px - (CW*2+GAP)/2;
+    b.chars.forEach((name, ci) => {
+      const id = b.id+'_'+ci;
+      nodes.push({ id, name, bookId:b.id, col:b.col, bg:b.bg, x: lx+ci*(CW+GAP), y: py-CH/2 });
+      charData[id] = { name, book: b.book };
+    });
+  });
+}
+
+function connKey(a,b) { return [a,b].sort().join('||'); }
+function ncx(n) { return n.x+CW/2; }
+function ncy(n) { return n.y+CH/2; }
+
+const canvas = document.getElementById('c');
+const dpr = Math.min(window.devicePixelRatio||1, 2);
+
+function resizeCanvas() {
+  const wrap = document.getElementById('canvas-wrap');
+  VW = Math.max(960, wrap.clientWidth);
+  canvas.width = VW * dpr;
+  canvas.height = VH * dpr;
+  canvas.style.width = VW + 'px';
+  canvas.style.height = VH + 'px';
+  buildNodes();
+  draw();
+}
+
+const ctx = canvas.getContext('2d');
+
+function draw() {
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, VW, VH);
+
+  // Draw connection lines
+  const drawn = new Set();
+  Object.entries(connections).forEach(([key, conn]) => {
+    if (drawn.has(key)) return; drawn.add(key);
+    const [idA, idB] = key.split('||');
+    const nA = nodes.find(n=>n.id===idA), nB = nodes.find(n=>n.id===idB);
+    if (!nA||!nB) return;
+    const types = ['rel','sec','pow','int'].filter(t=>conn[t]);
+    if (!types.length) return;
+    const ax=ncx(nA),ay=ncy(nA),bx=ncx(nB),by=ncy(nB);
+    const dx=by-ay, dy=ax-bx, len=Math.sqrt(dx*dx+dy*dy)||1;
+    types.forEach((t,idx) => {
+      const spread=(types.length-1)*3, shift=-spread/2+idx*6;
+      const nx=dx/len*shift, ny=dy/len*shift;
+      ctx.beginPath();
+      ctx.moveTo(ax+nx,ay+ny); ctx.lineTo(bx+nx,by+ny);
+      ctx.strokeStyle=CONN_COLORS[t]; ctx.lineWidth=1.5;
+      ctx.globalAlpha=0.6; ctx.setLineDash(CONN_DASH[t]); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha=1;
+    });
+  });
+
+  // Draw couple connectors
+  BOOKS.forEach(b => {
+    const pair = nodes.filter(n=>n.bookId===b.id);
+    if (pair.length===2) {
+      ctx.beginPath();
+      ctx.moveTo(pair[0].x+CW, pair[0].y+CH/2);
+      ctx.lineTo(pair[1].x, pair[1].y+CH/2);
+      ctx.strokeStyle=b.col; ctx.lineWidth=1; ctx.globalAlpha=0.25;
+      ctx.stroke(); ctx.globalAlpha=1;
+    }
+  });
+
+  // Draw nodes
+  nodes.forEach(n => {
+    const sel = n.id===selectedId;
+    ctx.beginPath();
+    rrect(ctx, n.x, n.y, CW, CH, CR);
+    ctx.fillStyle = n.bg; ctx.fill();
+    ctx.strokeStyle = n.col; ctx.lineWidth = sel ? 2 : 0.75;
+    ctx.stroke();
+
+    ctx.fillStyle = n.col;
+    ctx.font = `${sel?600:500} 12px system-ui, -apple-system, sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(n.name, n.x+CW/2, n.y+CH/2, CW-12);
+  });
+}
+
+function rrect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+
+canvas.addEventListener('click', e => {
+  if (dragState && dragState.moved) return;
+  const {mx,my} = evXY(e);
+  const hit = nodes.find(n=>mx>=n.x&&mx<=n.x+CW&&my>=n.y&&my<=n.y+CH);
+  if (hit) { selectedId=hit.id; draw(); openPanel(hit.id); }
+  else { selectedId=null; draw(); closePanel(); }
+});
+
+canvas.addEventListener('mousemove', e => {
+  const {mx,my} = evXY(e);
+  const hit = nodes.some(n=>mx>=n.x&&mx<=n.x+CW&&my>=n.y&&my<=n.y+CH);
+  canvas.style.cursor = hit ? 'pointer' : 'default';
+});
+
+function evXY(e) {
+  const r = canvas.getBoundingClientRect();
+  return { mx:(e.clientX-r.left)*(VW/r.width), my:(e.clientY-r.top)*(VH/r.height) };
+}
+
+function openPanel(id) {
+  const panel = document.getElementById('panel');
+  panel.classList.add('open');
+  renderPanel(id);
+  setTimeout(()=>panel.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
+}
+
+function renderPanel(id) {
+  const n = nodes.find(x=>x.id===id);
+  const cd = charData[id];
+  const partner = nodes.find(x=>x.bookId===n.bookId&&x.id!==id);
+  document.getElementById('panel-name').textContent = cd.name;
+  document.getElementById('panel-name').style.color = n.col;
+  const psub = partner ? `${cd.book} · Partner: ${charData[partner.id].name}` : cd.book;
+  document.getElementById('panel-sub').innerHTML = `${psub} · <button id="edit-toggle" onclick="toggleEdit()">Edit name / book ↗</button>`;
+  document.getElementById('ei-name').value = cd.name;
+  document.getElementById('ei-book').value = cd.book;
+  document.getElementById('edit-section').classList.remove('open');
+  renderConnTable(id);
+}
+
+function renderConnTable(id) {
+  const tbl = document.getElementById('conn-table');
+  tbl.innerHTML = '';
+  nodes.filter(x=>x.id!==id).forEach(other => {
+    const key = connKey(id, other.id);
+    const conn = connections[key]||{};
+    const ocd = charData[other.id];
+
+    const badges = [];
+    if (conn.rel) badges.push(`<span class="badge b-rel">Relationship</span>`);
+    if (conn.sec) badges.push(`<span class="badge b-sec">Secrets</span>`);
+    if (conn.pow) badges.push(`<span class="badge b-pow">Power</span>`);
+    if (conn.int) badges.push(`<span class="badge b-int">Interests</span>`);
+
+    const badgeHtml = badges.length
+      ? `<div class="badges">${badges.join('')}</div>`
+      : `<div style="color:#c5c0b8;font-size:11px;margin-bottom:4px;">No connection yet</div>`;
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:#1a1a18;font-weight:500">${ocd.name}<div style="font-size:10px;color:#aaa49c;font-weight:400">${charData[other.id].book}</div></td>
+      <td>
+        ${badgeHtml}
+        <div class="checks">
+          <label><input type="checkbox" ${conn.rel?'checked':''} onchange="tog('${id}','${other.id}','rel',this.checked)"> Relationship</label>
+          <label><input type="checkbox" ${conn.sec?'checked':''} onchange="tog('${id}','${other.id}','sec',this.checked)"> Secrets</label>
+          <label><input type="checkbox" ${conn.pow?'checked':''} onchange="tog('${id}','${other.id}','pow',this.checked)"> Power</label>
+          <label><input type="checkbox" ${conn.int?'checked':''} onchange="tog('${id}','${other.id}','int',this.checked)"> Interests</label>
+        </div>
+        <input class="note-input" placeholder="Add a note…" value="${conn.note||''}" onchange="setNote('${id}','${other.id}',this.value)">
+      </td>`;
+    tbl.appendChild(tr);
+  });
+}
+
+function toggleEdit() {
+  document.getElementById('edit-section').classList.toggle('open');
+}
+function saveEdit() {
+  if (!selectedId) return;
+  const name = document.getElementById('ei-name').value.trim();
+  const book = document.getElementById('ei-book').value.trim();
+  const n = nodes.find(x=>x.id===selectedId);
+  if (name) { n.name=name; charData[selectedId].name=name; }
+  if (book) {
+    charData[selectedId].book=book;
+    nodes.filter(x=>x.bookId===n.bookId).forEach(x=>{ charData[x.id].book=book; });
+  }
+  draw(); renderPanel(selectedId);
+}
+function closePanel() {
+  selectedId=null; draw();
+  document.getElementById('panel').classList.remove('open');
+}
+function tog(fromId, toId, type, val) {
+  const key=connKey(fromId,toId);
+  if (!connections[key]) connections[key]={};
+  connections[key][type]=val;
+  draw(); renderConnTable(fromId);
+}
+function setNote(fromId, toId, val) {
+  const key=connKey(fromId,toId);
+  if (!connections[key]) connections[key]={};
+  connections[key].note=val;
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+</script>
+</body>
+</html>
